@@ -1,0 +1,17 @@
+{
+  "name": "proxy-163",
+  "version": "1.0.0",
+  "description": "A dynamic http reverse-server for 163.",
+  "main": "loader.js",
+  "scripts": {"start": "node loader.js"},
+  "author": "JixunMoe",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^0.20.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JixunMoe/proxy-163"
+  },
+  "private": true
+}
