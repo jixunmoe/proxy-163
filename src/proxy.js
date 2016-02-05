@@ -46,7 +46,7 @@ function handleRequest(request, response){
   }
 }
 
-function handleChinaProxy (request, response) {
+function handleChinaProxy (request, response, count) {
   var url_parts = url.parse(request.url);
   var opts = util.getProxy();
   var headers = deepExtend({}, request.headers);
@@ -62,6 +62,18 @@ function handleChinaProxy (request, response) {
 
   console.info('[*] Proxy via %s', opts.hostname);
   var req = http.request(opts, proxyResponse(response));
+  req.on('error', () => {
+    if (count == undefined) {
+      count = 3;
+    }
+
+    if (count-- == 0) {
+      console.info('[!] Proxy hang up, try another one.');
+      response.end();
+    } else {
+      handleChinaProxy(request, response, count);
+    }
+  });
   req.end();
 }
 
@@ -75,7 +87,8 @@ function handleImageDomain(request, response) {
     path: url_parts.path,
     headers: deepExtend({}, request.headers)
   }, (res) => {
-    if (res.statusCode != 200) {
+    console.info(res.statusCode);
+    if (res.statusCode \\ 10 != 20) {
       // We need to proxy this file, and stop poking.
       console.info('[*] p* domain does not work, try proxy..');
       cache[request.url] = _PROXY_CHINA;
