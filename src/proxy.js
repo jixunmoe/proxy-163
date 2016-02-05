@@ -80,32 +80,48 @@ function handleChinaProxy (request, response, count) {
 function handleImageDomain(request, response) {
   var url_parts = url.parse(request.url);
   var host = url_parts.hostname.replace('m', 'p');
-
-  var req = http.request({
+  var headers = deepExtend({}, request.headers);
+  var opts = {
     hostname: host,
     method: 'GET',
     path: url_parts.path,
-    headers: deepExtend({}, request.headers)
-  }, (res) => {
+    headers: headers
+  };
+
+  if (headers.hostname) delete headers.hostname;
+  if (headers.host) delete headers.host;
+
+  var req = http.request(opts, (res) => {
+    // console.info(res);
     if (~~(res.statusCode / 10) != 20) {
-      // We need to proxy this file, and stop poking.
-      console.info('[*] p* domain does not work, try proxy..');
-      cache[request.url] = _PROXY_CHINA;
-      handleChinaProxy (request, response);
+      res.on('data', () => {});
+      res.on('end',  () => {});
+      handleImageDomainError() ;
       return ;
     }
 
     console.info('[*] p* domain works, proxy data though.');
-    proxyResponse(response)(res);
+    proxyResponse(response, true)(res);
   });
-
+  req.on('error', handleImageDomainError);
   req.end();
+
+  function handleImageDomainError () {
+    // We need to proxy this file, and stop poking.
+    console.info('[*] p* domain does not work, try proxy..');
+    cache[request.url] = _PROXY_CHINA;
+    handleChinaProxy (request, response);
+  }
 }
 
-function proxyResponse(response) {
+function proxyResponse(response, bFixHeader) {
   return (res) => {
     // 1 year cache, sounds good?
-    res.headers['cache-control'] = 'max-age=31556926';
+    res.headers['Cache-Control'] = 'max-age=31556926';
+
+    if (bFixHeader)
+      res.headers['Content-Type'] = 'audio/mpeg';
+
     for (var key in res.headers){
       response.setHeader(key, res.headers[key]);
     }
