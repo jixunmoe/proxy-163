@@ -50,10 +50,11 @@ function finialiseProxyUpdate (callback, body) {
 	var $ = cheerio.load(body);
 	$('.table-container tr').each(function (i, row) {
 		var childrens = row.children.filter(function (row) { return row.type == 'tag' });
-		if (childrens[0].name == 'td') {
+		var port = parseInt($(childrens[1]).text());
+		if (port) {
 			_proxies.push({
 				hostname: $(childrens[0]).text(),
-				port: parseInt($(childrens[1]).text())
+				port: port
 			});
 		}
 	});
