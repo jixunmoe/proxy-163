@@ -87,8 +87,7 @@ function handleImageDomain(request, response) {
     path: url_parts.path,
     headers: deepExtend({}, request.headers)
   }, (res) => {
-    console.info(res.statusCode);
-    if (res.statusCode \\ 10 != 20) {
+    if (~~(res.statusCode / 10) != 20) {
       // We need to proxy this file, and stop poking.
       console.info('[*] p* domain does not work, try proxy..');
       cache[request.url] = _PROXY_CHINA;
