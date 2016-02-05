@@ -6,6 +6,11 @@
 3. Install dependencies using `npm install`
 4. Run with `npm start`
 
+# Run on Windows boot
+1. Right click "boot.cmd", select "Create Shortcut"
+2. Copy file to "Start Menu" -> "All Programs" -> "Startup".
+3. You can also set it to minimize on shortcut property panel.
+
 # CUWCL4C user
 1. Open [config page](https://jixunmoe.github.io/cuwcl4c/config/).
 2. Check all "Special switch".
@@ -16,6 +21,11 @@
 2. 下载本仓库代码
 3. 运行 `npm install` 安装所有依赖项
 4. 使用 `npm start` 运行
+
+# 随 Windows 启动
+1. 右键「boot.cmd」选择「建立快捷方式」。
+2. 拷贝文件至「开始菜单」->「所有程序」->「启动」。
+3. 你也可以在快捷方式的属性面板设定为最小化。
 
 # CUWCL4C 用户
 1. 开启[配置页面](https://jixunmoe.github.io/cuwcl4c/config/)
