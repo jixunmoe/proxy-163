@@ -1,3 +1,4 @@
+/* jshint esversion:6 */
 const loadProxyFromCache = true;
 
 var http = require('http');
