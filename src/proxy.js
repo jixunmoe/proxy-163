@@ -1,3 +1,4 @@
+/* jshint esversion:6 */
 var http = require('http');
 var url  = require('url');
 var util = require('./util');
@@ -63,11 +64,11 @@ function handleChinaProxy (request, response, count) {
   console.info('[*] Proxy via %s', opts.hostname);
   var req = http.request(opts, proxyResponse(response));
   req.on('error', () => {
-    if (count == undefined) {
+    if (count === undefined) {
       count = 3;
     }
 
-    if (count-- == 0) {
+    if (count-- === 0) {
       console.info('[!] Proxy hang up, try another one.');
       response.end();
     } else {
@@ -79,6 +80,16 @@ function handleChinaProxy (request, response, count) {
 
 function handleImageDomain(request, response) {
   var url_parts = url.parse(request.url);
+  if (url_parts.hostname[0] != 'm') {
+    // ip as domain
+    var parts = url_parts.path.slice(1).split('/');
+    url_parts.host = url_parts.hostname = parts.shift();
+    url_parts.path = url_parts.pathname = '/' + parts.join('/');
+    request.url = url.format(url_parts);
+    console.info('[*] rebuild url: %s', request.url);
+  }
+
+
   var host = url_parts.hostname.replace('m', 'p');
   var headers = deepExtend({}, request.headers);
   var opts = {
@@ -92,7 +103,6 @@ function handleImageDomain(request, response) {
   if (headers.host) delete headers.host;
 
   var req = http.request(opts, (res) => {
-    // console.info(res);
     if (~~(res.statusCode / 10) != 20) {
       res.on('data', () => {});
       res.on('end',  () => {});

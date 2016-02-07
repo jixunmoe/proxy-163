@@ -1,0 +1,1 @@
+@curl http://cn-proxy.com/ > cn-proxy.html

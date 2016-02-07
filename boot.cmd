@@ -1,3 +1,4 @@
 @pushd %~dp0
-@npm start
+@chcp 437
+@call npm start
 @popd
