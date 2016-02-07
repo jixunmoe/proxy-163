@@ -10,6 +10,9 @@
 1. Right click "boot.cmd", select "Create Shortcut"
 2. Copy file to "Start Menu" -> "All Programs" -> "Startup".
 3. You can also set it to minimize on shortcut property panel.
+4. Or, run "install.cmd" as Admin, that will install `boot.cmd` to the system.
+No UI will be shown, its source code is under `proxy-helper` directory.
+This requires .NET 4.5 .
 
 # CUWCL4C user
 1. Open [config page](https://jixunmoe.github.io/cuwcl4c/config/).
@@ -26,6 +29,8 @@
 1. 右键「boot.cmd」选择「建立快捷方式」。
 2. 拷贝文件至「开始菜单」->「所有程序」->「启动」。
 3. 你也可以在快捷方式的属性面板设定为最小化。
+4. 或者，管理员权限执行一次「install.cmd」，安装自启动服务至系统 (无界面反馈)。
+相关代码你可以在 `proxy-helper` 目录下找到，另外该工具要求 .NET 4.5。
 
 # CUWCL4C 用户
 1. 开启[配置页面](https://jixunmoe.github.io/cuwcl4c/config/)
