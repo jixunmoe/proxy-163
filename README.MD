@@ -5,7 +5,7 @@
 2. clone this repo
 3. Install dependencies using `npm install`
 4. Run `node reload-cache.js` or `reload-cache.cmd`.
-5. Start the proxy use `npm start`
+5. Start the proxy use `npm start` or `npm start-unix`
 
 # Run on Windows boot
 1. Right click "boot.cmd", select "Create Shortcut"
@@ -25,7 +25,7 @@ This requires .NET 4.5 .
 2. 下载本仓库代码
 3. 运行 `npm install` 安装所有依赖项
 4. 执行 `node reload-cache.js` 或 `reload-cache.cmd`
-5. 使用 `npm start` 运行
+5. 使用 `npm start` 或 `npm start-unix` 运行
 
 # 随 Windows 启动
 1. 右键「boot.cmd」选择「建立快捷方式」。
