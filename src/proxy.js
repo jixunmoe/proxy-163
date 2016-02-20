@@ -1,4 +1,5 @@
-/* jshint esversion:6 */
+/* jshint esversion:6, node:true */
+'use strict';
 var http = require('http');
 var url  = require('url');
 var util = require('./util');
@@ -32,23 +33,41 @@ const _PROXY_IMAGE = 1;
 const _PROXY_CHINA = 2;
 var cache = {};
 
-//We need a function which handles requests and send response
+// We need a function which handles requests and send response
 function handleRequest(request, response){
+  var url_parts = url.parse(request.url);
+  if (null === url_parts.hostname) {
+    request.url = 'http:/' + url_parts.path;
+    url_parts = url.parse(request.url);
+  }
+
+  if (!url_parts.path || !url_parts.host || url_parts.host == 'favicon.ico') {
+    response.writeHead(404);
+    response.end();
+    return ;
+  }
+
   console.info('[*] Proxy url %s', request.url);
+
+  // If is not 126 domain, just use proxy.
+  if (request.url.indexOf('.music.126.net') == -1) {
+    handleChinaProxy(url_parts, request, response);
+    return ;
+  }
+
   switch (cache[request.url]) {
     case _PROXY_IMAGE:
     default:
-      handleImageDomain(request, response);
+      handleImageDomain(url_parts, request, response);
       break;
 
     case _PROXY_CHINA:
-      handleChinaProxy(request, response);
+      handleChinaProxy(url_parts, request, response);
       break;
   }
 }
 
-function handleChinaProxy (request, response, count) {
-  var url_parts = url.parse(request.url);
+function handleChinaProxy (url_parts, request, response, count) {
   var opts = util.getProxy();
   var headers = deepExtend({}, request.headers);
   
@@ -62,7 +81,7 @@ function handleChinaProxy (request, response, count) {
   });
 
   console.info('[*] Proxy via %s', opts.hostname);
-  var req = http.request(opts, proxyResponse(response));
+  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname}));
   req.on('error', () => {
     if (count === undefined) {
       count = 3;
@@ -72,14 +91,13 @@ function handleChinaProxy (request, response, count) {
       console.info('[!] Proxy hang up, try another one.');
       response.end();
     } else {
-      handleChinaProxy(request, response, count);
+      handleChinaProxy(url_parts, request, response, count);
     }
   });
   req.end();
 }
 
-function handleImageDomain(request, response) {
-  var url_parts = url.parse(request.url);
+function handleImageDomain(url_parts, request, response) {
   if (url_parts.hostname[0] != 'm') {
     // ip as domain
     var parts = url_parts.path.slice(1).split('/');
@@ -111,7 +129,7 @@ function handleImageDomain(request, response) {
     }
 
     console.info('[*] p* domain works, proxy data though.');
-    proxyResponse(response, true)(res);
+    proxyResponse(response, true, {'x-proxy-via': host})(res);
   });
   req.on('error', handleImageDomainError);
   req.end();
@@ -124,7 +142,7 @@ function handleImageDomain(request, response) {
   }
 }
 
-function proxyResponse(response, bFixHeader) {
+function proxyResponse(response, bFixHeader, otherHeaders) {
   return (res) => {
     // 1 year cache, sounds good?
     res.headers['Cache-Control'] = 'max-age=31556926';
@@ -132,8 +150,13 @@ function proxyResponse(response, bFixHeader) {
     if (bFixHeader)
       res.headers['Content-Type'] = 'audio/mpeg';
 
-    for (var key in res.headers){
+    for (let key in res.headers) {
       response.setHeader(key, res.headers[key]);
+    }
+    if (otherHeaders) {
+      for (let key in otherHeaders) {
+        response.setHeader(key, otherHeaders[key]);
+      }
     }
     response.writeHead(res.statusCode);
     
