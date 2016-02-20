@@ -68,7 +68,7 @@ function handleRequest(request, response){
   }
 }
 
-function handleChinaProxy (url_parts, request, response, count) {
+function handleChinaProxy (url_parts, request, response) {
   var opts = util.getProxy();
   var headers = deepExtend({}, request.headers);
 
@@ -83,20 +83,16 @@ function handleChinaProxy (url_parts, request, response, count) {
 
   console.info('[*] Proxy via %s:%d', opts.hostname, opts.port);
   var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname + ':' + opts.port}));
-  function onError () {
-    if (count === undefined) {
-      count = 3;
+  function onError() {
+    if (onError.count > 3) {
+      handleChinaProxy(url_parts, request, response);
+      return;
     }
-
-    if (count-- === 0) {
-      response.end();
-    } else {
-      console.info('[!] Proxy hang up, try another one.');
-      handleChinaProxy(url_parts, request, response, count);
-    }
+    onError.count++; 
   }
+  onError.count = 0;
   req.on('error', onError);
-  req.setTimeout(15000, onError);
+  req.setTimeout(1500, onError);
   req.end();
 }
 
