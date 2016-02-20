@@ -54,9 +54,9 @@ function handleRequest(request, response){
   }
 
   if (url_parts.host == 'music.163.com') {
-    // _debug_handleRequest('direct access %s', request.url);
-    // handlePassThrough (url_parts, request, response);
-    // return ;
+    _debug_handleRequest('direct access %s', request.url);
+    handlePassThrough (url_parts, request, response);
+    return ;
   }
 
   _debug_handleRequest('Proxy url %s', request.url);
