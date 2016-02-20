@@ -48,6 +48,12 @@ function handleRequest(request, response){
     return ;
   }
 
+  if (url_parts.host == 'music.163.com') {
+    console.info('[*] direct access %s', request.url);
+    // handlePassThrough (url_parts, request, response);
+    // return ;
+  }
+
   console.info('[*] Proxy url %s', request.url);
 
   // If is not 126 domain, just use proxy.
@@ -68,6 +74,41 @@ function handleRequest(request, response){
   }
 }
 
+function handleErrorOnce (req, onError) {
+  var counter = 1;
+  function OnError () {
+    if (counter) {
+      counter--;
+      return onError.apply(this, arguments);
+    }
+  }
+
+  req.setTimeout(3500, OnError);
+  req.on('error', OnError);
+}
+
+function handlePassThrough (url_parts, request, response) {
+  var headers = deepExtend({}, request.headers);
+  if (headers.hostname) delete headers.hostname;
+  if (headers.host) delete headers.host;
+
+
+  var opts = {
+    method: 'GET',
+    host: url_parts.host,
+    port: url_parts.port || 80,
+    path: url_parts.path,
+    headers: headers
+  };
+
+  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': 'DIRECT'}));
+  function onError (err) {
+    console.error('[handlePassThrough] Error/timeout: ', err);
+  }
+  handleErrorOnce(req, onError);
+  req.end();
+}
+
 function handleChinaProxy (url_parts, request, response, count) {
   var opts = util.getProxy();
   var headers = deepExtend({}, request.headers);
@@ -83,7 +124,7 @@ function handleChinaProxy (url_parts, request, response, count) {
 
   console.info('[*] Proxy via %s:%d', opts.hostname, opts.port);
   var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname + ':' + opts.port}));
-  function onError () {
+  handleErrorOnce(req, () => {
     if (count === undefined) {
       count = 3;
     }
@@ -94,13 +135,12 @@ function handleChinaProxy (url_parts, request, response, count) {
       console.info('[!] Proxy hang up, try another one.');
       handleChinaProxy(url_parts, request, response, count);
     }
-  }
-  req.on('error', onError);
-  req.setTimeout(15000, onError);
+  });
   req.end();
 }
 
 function handleImageDomain(url_parts, request, response) {
+  var counter = 1;
   if (url_parts.hostname[0] != 'm') {
     // ip as domain
     var parts = url_parts.path.slice(1).split('/');
@@ -134,47 +174,57 @@ function handleImageDomain(url_parts, request, response) {
     console.info('[*] p* domain works, proxy data though.');
     proxyResponse(response, true, {'x-proxy-via': host})(res);
   });
-  req.on('error', handleImageDomainError);
+  handleErrorOnce(req, handleImageDomainError);
   req.end();
 
   function handleImageDomainError () {
-    // We need to proxy this file, and stop poking.
-    console.info('[*] p* domain does not work, try proxy..');
-    cache[request.url] = _PROXY_CHINA;
-    handleChinaProxy (url_parts, request, response);
+    if (counter) {
+      counter--;
+
+      // We need to proxy this file, and stop poking.
+      console.info('[*] p* domain does not work, try proxy..');
+      cache[request.url] = _PROXY_CHINA;
+      handleChinaProxy (url_parts, request, response);
+    }
   }
 }
 
-function proxyResponse(response, bFixHeader, otherHeaders) {
+function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader) {
   var stack = new Error();
   if (!response) {
     throw stack;
   }
   return (res) => {
-    // 1 year cache, sounds good?
-    res.headers['Cache-Control'] = 'max-age=31556926';
+    if (bWriteHeader) {
+      // 1 year cache, sounds good?
+      res.headers['Cache-Control'] = 'max-age=31556926';
 
-    if (bFixHeader)
-      res.headers['Content-Type'] = 'audio/mpeg';
+      if (bFixHeader)
+        res.headers['Content-Type'] = 'audio/mpeg';
 
-    try {
-      response.setHeader('x-test', 'jixun');
-    } catch (e) {
-      throw stack;
-    }
-    for (let key in res.headers) {
-      response.setHeader(key, res.headers[key]);
-    }
-    if (otherHeaders) {
-      for (let key in otherHeaders) {
-        response.setHeader(key, otherHeaders[key]);
+      try {
+        response.setHeader('x-test', 'jixun');
+      } catch (e) {
+        throw stack;
       }
+      for (let key in res.headers) {
+        response.setHeader(key, res.headers[key]);
+      }
+      if (otherHeaders) {
+        for (let key in otherHeaders) {
+          response.setHeader(key, otherHeaders[key]);
+        }
+      }
+      response.writeHead(res.statusCode);
     }
-    response.writeHead(res.statusCode);
     
     res.on('data', (chunk) => {
       response.write(chunk);
       // console.info('[*] Proxied %d bytes.', chunk.length);
+    });
+    res.on('error', (error) => {
+      console.error('Some error occured.');
+      console.error(error);
     });
     res.on('end', () => {
       response.end();
