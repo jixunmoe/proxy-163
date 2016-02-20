@@ -1,2 +1,3 @@
+/* jshint esversion:6,node:true */
 var util = require('./src/util');
-util.updProxyList(() => require('./src/proxy'));
+util.loadProxies(() => require('./src/proxy'));

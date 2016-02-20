@@ -37,6 +37,7 @@ var cache = {};
 function handleRequest(request, response){
   var url_parts = url.parse(request.url);
   if (null === url_parts.hostname) {
+    console.info(url_parts.path);
     request.url = 'http:/' + url_parts.path;
     url_parts = url.parse(request.url);
   }
@@ -70,30 +71,32 @@ function handleRequest(request, response){
 function handleChinaProxy (url_parts, request, response, count) {
   var opts = util.getProxy();
   var headers = deepExtend({}, request.headers);
-  
-  if (headers.cookie)
-    delete headers.cookie;
 
+  headers.hostname = url_parts.hostname;
+  headers.host = url_parts.hostname;
+  
   deepExtend(opts, {
     method: 'GET',
     path: url_parts.path,
     headers: headers
   });
 
-  console.info('[*] Proxy via %s', opts.hostname);
-  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname}));
-  req.on('error', () => {
+  console.info('[*] Proxy via %s:%d', opts.hostname, opts.port);
+  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname + ':' + opts.port}));
+  function onError () {
     if (count === undefined) {
       count = 3;
     }
 
     if (count-- === 0) {
-      console.info('[!] Proxy hang up, try another one.');
       response.end();
     } else {
+      console.info('[!] Proxy hang up, try another one.');
       handleChinaProxy(url_parts, request, response, count);
     }
-  });
+  }
+  req.on('error', onError);
+  req.setTimeout(15000, onError);
   req.end();
 }
 
@@ -138,11 +141,15 @@ function handleImageDomain(url_parts, request, response) {
     // We need to proxy this file, and stop poking.
     console.info('[*] p* domain does not work, try proxy..');
     cache[request.url] = _PROXY_CHINA;
-    handleChinaProxy (request, response);
+    handleChinaProxy (url_parts, request, response);
   }
 }
 
 function proxyResponse(response, bFixHeader, otherHeaders) {
+  var stack = new Error();
+  if (!response) {
+    throw stack;
+  }
   return (res) => {
     // 1 year cache, sounds good?
     res.headers['Cache-Control'] = 'max-age=31556926';
@@ -150,6 +157,11 @@ function proxyResponse(response, bFixHeader, otherHeaders) {
     if (bFixHeader)
       res.headers['Content-Type'] = 'audio/mpeg';
 
+    try {
+      response.setHeader('x-test', 'jixun');
+    } catch (e) {
+      throw stack;
+    }
     for (let key in res.headers) {
       response.setHeader(key, res.headers[key]);
     }

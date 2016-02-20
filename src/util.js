@@ -1,6 +1,4 @@
 /* jshint esversion:6 */
-const loadProxyFromCache = true;
-
 var http = require('http');
 var proxies = [];
 var fs = require('fs');
@@ -15,8 +13,8 @@ function getProxy () {
 }
 
 
-function updateProxyList (callback) {
-	if (loadProxyFromCache) {
+function updateProxyList (callback, loadFromCache) {
+	if (loadFromCache) {
 		try {
 			var p = fs.readFileSync('./cn-proxy.html');
 			finialiseProxyUpdate(callback, p.toString());
@@ -62,10 +60,40 @@ function finialiseProxyUpdate (callback, body) {
 
 	proxies = _proxies;
 	console.warn('[*] %d proxies loaded!', proxies.length);
-	callback(proxies);
+	callback(_proxies);
+}
+
+function removeComment (str) {
+	return str.trim()[0] != '#';
+}
+
+function convProxy (proxy) {
+	var data = proxy.split(':');
+	return {
+		hostname: data[0],
+		port: data[1]
+	};
+}
+
+function loadProxies (callback) {
+	var _proxies = [];
+	_proxies = fs.readFileSync('./proxies.txt', 'utf8').split('\n').filter(removeComment).map(convProxy);
+	proxies = _proxies;
+	console.warn('[*] %d proxies loaded!', proxies.length);
+	callback(_proxies);
+}
+
+function writeProxies () {
+	var _proxies = proxies.map(function (proxy) {
+		return proxy.hostname + ':' + proxy.port;
+	});
+	_proxies.splice(0, 0, '# Proxy data (one per row, format ip:port)\n# Generated at time ' + (new Date()));
+	fs.writeFileSync('./proxies.txt', _proxies.join('\n'), 'utf8');
 }
 
 module.exports = {
 	getProxy: getProxy,
-	updProxyList: updateProxyList
+	updProxyList: updateProxyList,
+	loadProxies: loadProxies,
+	writeProxies: writeProxies
 };

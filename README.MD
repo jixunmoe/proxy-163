@@ -4,7 +4,8 @@
 1. Install node.js `~5.5.0`
 2. clone this repo
 3. Install dependencies using `npm install`
-4. Run with `npm start`
+4. Run `node reload-cache.js` or `reload-cache.cmd`.
+5. Start the proxy use `npm start`
 
 # Run on Windows boot
 1. Right click "boot.cmd", select "Create Shortcut"
@@ -23,7 +24,8 @@ This requires .NET 4.5 .
 1. 安装 node.js, 版本 `~5.5.0`
 2. 下载本仓库代码
 3. 运行 `npm install` 安装所有依赖项
-4. 使用 `npm start` 运行
+4. 执行 `node reload-cache.js` 或 `reload-cache.cmd`
+5. 使用 `npm start` 运行
 
 # 随 Windows 启动
 1. 右键「boot.cmd」选择「建立快捷方式」。
