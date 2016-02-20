@@ -4,7 +4,8 @@
   "description": "A dynamic http reverse-server for 163.",
   "main": "loader.js",
   "scripts": {
-    "start": "set debug=n* && node loader.js"
+    "start": "set debug=n* && node loader.js",
+    "start-unix": "debug=n* node loader.js"
   },
   "author": "JixunMoe",
   "license": "MIT",
