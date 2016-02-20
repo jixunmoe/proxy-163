@@ -3,6 +3,7 @@ var http = require('http');
 var proxies = [];
 var fs = require('fs');
 var cheerio = require('cheerio');
+var debug = require('debug');
 
 function random (max) {
 	return ~~(Math.random() * proxies.length);
@@ -12,20 +13,20 @@ function getProxy () {
 	return proxies[random()];
 }
 
-
+var _debug_updateProxyList = debug('n:updateProxyList');
 function updateProxyList (callback, loadFromCache) {
 	if (loadFromCache) {
 		try {
 			var p = fs.readFileSync('./cn-proxy.html');
 			finialiseProxyUpdate(callback, p.toString());
-			console.info('[*] Proxy list loaded from cache.');
+			_debug_updateProxyList('[*] Proxy list loaded from cache.');
 			return ;
 		} catch (err) {
-			console.warn('[!] Failed to load proxy from cache, updating online..');
+			_debug_updateProxyList('[!] Failed to load proxy from cache, updating online..');
 		}
 	}
 
-	console.warn('[*] Fetch proxy list..');
+	_debug_updateProxyList('[*] Fetch proxy list..');
 	http.get({
 		host: 'cn-proxy.com',
 		port: 80,
@@ -39,11 +40,12 @@ function updateProxyList (callback, loadFromCache) {
 			finialiseProxyUpdate(callback, body);
 		});
 	}).on('error', function (err) {
-		console.error('[x] Failed to fetch proxy list.');
+		_debug_updateProxyList('[x] Failed to fetch proxy list.');
 		process.exit(1);
 	});
 }
 
+var _debug_finialiseProxyUpdate = debug('n:finialiseProxyUpdate');
 function finialiseProxyUpdate (callback, body) {
 	var _proxies = [];
 	var $ = cheerio.load(body);
@@ -59,7 +61,7 @@ function finialiseProxyUpdate (callback, body) {
 	});
 
 	proxies = _proxies;
-	console.warn('[*] %d proxies loaded!', proxies.length);
+	_debug_finialiseProxyUpdate('[*] %d proxies loaded!', proxies.length);
 	callback(_proxies);
 }
 
@@ -75,11 +77,12 @@ function convProxy (proxy) {
 	};
 }
 
+var _debug_loadProxies = debug('n:loadProxies');
 function loadProxies (callback) {
 	var _proxies = [];
 	_proxies = fs.readFileSync('./proxies.txt', 'utf8').split('\n').filter(removeComment).map(convProxy);
 	proxies = _proxies;
-	console.warn('[*] %d proxies loaded!', proxies.length);
+	_debug_loadProxies('[*] %d proxies loaded!', proxies.length);
 	callback(_proxies);
 }
 

@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "description": "A dynamic http reverse-server for 163.",
   "main": "loader.js",
-  "scripts": {"start": "node loader.js"},
+  "scripts": {
+    "start": "set debug=n* && node loader.js"
+  },
   "author": "JixunMoe",
   "license": "MIT",
   "dependencies": {
-    "cheerio": "^0.20.0"
+    "cheerio": "^0.20.0",
+    "debug": "^2.2.0"
   },
   "repository": {
     "type": "git",

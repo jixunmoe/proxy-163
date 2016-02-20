@@ -2,6 +2,7 @@
 'use strict';
 var http = require('http');
 var url  = require('url');
+var debug = require('debug');
 var util = require('./util');
 
 const PORT = 4003;
@@ -34,27 +35,31 @@ const _PROXY_CHINA = 2;
 var cache = {};
 
 // We need a function which handles requests and send response
+var _debug_handleRequest = debug('n:handleRequest');
+var _debug_handleRequestV = debug('v:handleRequest');
 function handleRequest(request, response){
+  _debug_handleRequestV('enter');
   var url_parts = url.parse(request.url);
   if (null === url_parts.hostname) {
-    console.info(url_parts.path);
+    _debug_handleRequest(url_parts.path);
     request.url = 'http:/' + url_parts.path;
     url_parts = url.parse(request.url);
   }
 
   if (!url_parts.path || !url_parts.host || url_parts.host == 'favicon.ico') {
     response.writeHead(404);
+    _debug_handleRequestV('end response.');
     response.end();
     return ;
   }
 
   if (url_parts.host == 'music.163.com') {
-    console.info('[*] direct access %s', request.url);
+    // _debug_handleRequest('direct access %s', request.url);
     // handlePassThrough (url_parts, request, response);
     // return ;
   }
 
-  console.info('[*] Proxy url %s', request.url);
+  _debug_handleRequest('Proxy url %s', request.url);
 
   // If is not 126 domain, just use proxy.
   if (request.url.indexOf('.music.126.net') == -1) {
@@ -74,7 +79,10 @@ function handleRequest(request, response){
   }
 }
 
+var _debug_handleErrorOnce = debug('n:handleErrorOnce');
+var _debug_handleErrorOnceV = debug('v:handleErrorOnce');
 function handleErrorOnce (req, onError) {
+  _debug_handleErrorOnceV('enter');
   var counter = 1;
   function OnError () {
     if (counter) {
@@ -87,7 +95,10 @@ function handleErrorOnce (req, onError) {
   req.on('error', OnError);
 }
 
-function handlePassThrough (url_parts, request, response) {
+var _debug_handlePassThrough = debug('n:handlePassThrough');
+var _debug_handlePassThroughV = debug('v:handlePassThrough');
+function handlePassThrough (url_parts, request, response, count) {
+  _debug_handlePassThroughV('enter');
   var headers = deepExtend({}, request.headers);
   if (headers.hostname) delete headers.hostname;
   if (headers.host) delete headers.host;
@@ -101,15 +112,28 @@ function handlePassThrough (url_parts, request, response) {
     headers: headers
   };
 
-  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': 'DIRECT'}));
+  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': 'DIRECT'}, true));
   function onError (err) {
-    console.error('[handlePassThrough] Error/timeout: ', err);
+    _debug_handlePassThrough('Error/timeout: ', err);
+
+    if (count === undefined) {
+      count = 3;
+    }
+
+    if (count) {
+      handlePassThrough (url_parts, request, response, count - 1);
+    } else {
+      _debug_handlePassThrough('[!] Give up after 3 tries.');
+    }
   }
   handleErrorOnce(req, onError);
   req.end();
 }
 
+var _debug_handleChinaProxy = debug('n:handleChinaProxy');
+var _debug_handleChinaProxyV = debug('v:handleChinaProxy');
 function handleChinaProxy (url_parts, request, response, count) {
+  _debug_handleChinaProxyV('enter');
   var opts = util.getProxy();
   var headers = deepExtend({}, request.headers);
 
@@ -122,24 +146,34 @@ function handleChinaProxy (url_parts, request, response, count) {
     headers: headers
   });
 
-  console.info('[*] Proxy via %s:%d', opts.hostname, opts.port);
-  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname + ':' + opts.port}));
+  var hadError = false;
+  _debug_handleImageDomain('Proxy via %s:%d', opts.hostname, opts.port);
+  var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname + ':' + opts.port}), true, () => {
+    if (hadError) return ;
+    _debug_handleChinaProxyV('end response.');
+    response.end();
+  });
   handleErrorOnce(req, () => {
+    hadError = true;
     if (count === undefined) {
       count = 3;
     }
 
-    if (count-- === 0) {
+    if (count === 0) {
+      _debug_handleChinaProxyV('end response.');
       response.end();
     } else {
-      console.info('[!] Proxy hang up, try another one.');
-      handleChinaProxy(url_parts, request, response, count);
+      _debug_handleImageDomain('[!] Proxy hang up, try another one.');
+      handleChinaProxy(url_parts, request, response, count - 1);
     }
   });
   req.end();
 }
 
+var _debug_handleImageDomain = debug('n:handleImageDomain');
+var _debug_handleImageDomainV = debug('v:handleImageDomain');
 function handleImageDomain(url_parts, request, response) {
+  _debug_handleImageDomainV('enter');
   var counter = 1;
   if (url_parts.hostname[0] != 'm') {
     // ip as domain
@@ -147,7 +181,7 @@ function handleImageDomain(url_parts, request, response) {
     url_parts.host = url_parts.hostname = parts.shift();
     url_parts.path = url_parts.pathname = '/' + parts.join('/');
     request.url = url.format(url_parts);
-    console.info('[*] rebuild url: %s', request.url);
+    _debug_handleImageDomain('rebuild url: %s', request.url);
   }
 
 
@@ -171,8 +205,8 @@ function handleImageDomain(url_parts, request, response) {
       return ;
     }
 
-    console.info('[*] p* domain works, proxy data though.');
-    proxyResponse(response, true, {'x-proxy-via': host})(res);
+    _debug_handleImageDomain('p* domain works, proxy data though.');
+    proxyResponse(response, true, {'x-proxy-via': host}, true)(res);
   });
   handleErrorOnce(req, handleImageDomainError);
   req.end();
@@ -182,14 +216,17 @@ function handleImageDomain(url_parts, request, response) {
       counter--;
 
       // We need to proxy this file, and stop poking.
-      console.info('[*] p* domain does not work, try proxy..');
+      _debug_handleImageDomain('p* domain does not work, try proxy..');
       cache[request.url] = _PROXY_CHINA;
       handleChinaProxy (url_parts, request, response);
     }
   }
 }
 
-function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader) {
+var _debug_proxyResponse = debug('n:proxyResponse');
+var _debug_proxyResponseV = debug('v:proxyResponse');
+function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) {
+  _debug_proxyResponseV('enter');
   var stack = new Error();
   if (!response) {
     throw stack;
@@ -220,13 +257,15 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader) {
     
     res.on('data', (chunk) => {
       response.write(chunk);
-      // console.info('[*] Proxied %d bytes.', chunk.length);
+      _debug_proxyResponseV('Proxied %d bytes.', chunk.length);
     });
     res.on('error', (error) => {
-      console.error('Some error occured.');
-      console.error(error);
+      _debug_proxyResponse('Some error occured.');
+      _debug_proxyResponse(error);
     });
-    res.on('end', () => {
+
+    res.on('end', onEnd || () => {
+      _debug_proxyResponseV('end response.');
       response.end();
     });
   };
@@ -238,5 +277,5 @@ var server = http.createServer(handleRequest);
 //Lets start our server
 server.listen(PORT, function(){
   //Callback triggered when server is successfully listening. Hurray!
-  console.log("[*] Proxy started at port %d", PORT);
+  debug('app')("Proxy started at port %d", PORT);
 });
