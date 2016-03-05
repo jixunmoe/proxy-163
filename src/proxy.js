@@ -151,6 +151,7 @@ function handleChinaProxy (url_parts, request, response, count) {
   var req = http.request(opts, proxyResponse(response, false, {'x-proxy-via': opts.hostname + ':' + opts.port}), true, () => {
     if (hadError) return ;
     _debug_handleChinaProxyV('end response.');
+    response.ended = true;
     response.end();
   });
   handleErrorOnce(req, () => {
@@ -161,6 +162,7 @@ function handleChinaProxy (url_parts, request, response, count) {
 
     if (count === 0) {
       _debug_handleChinaProxyV('end response.');
+      response.ended = true;
       response.end();
     } else {
       _debug_handleImageDomain('[!] Proxy hang up, try another one.');
@@ -229,9 +231,28 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) 
   _debug_proxyResponseV('enter');
   var stack = new Error();
   if (!response) {
-    throw stack;
+  	_debug_proxyResponse('response is empty!');
+    return ;
   }
+
   return (res) => {
+    response.on('end', () => {
+      response.ended = true;
+
+      if (!res.ended) {
+        res.end();
+      }
+    });
+
+    response.on('error', (err) => {
+      if (err) {
+        _debug_proxyResponse('Error in response, captured: ', err.message);
+        _debug_proxyResponseV(err);
+      } else {
+        _debug_proxyResponse('Error in response, unknown error.');
+      }
+    });
+
     if (bWriteHeader) {
       // 1 year cache, sounds good?
       res.headers['Cache-Control'] = 'max-age=31556926';
@@ -239,11 +260,14 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) 
       if (bFixHeader)
         res.headers['Content-Type'] = 'audio/mpeg';
 
-      try {
-        response.setHeader('x-test', 'jixun');
-      } catch (e) {
-        throw stack;
+      if (response.wrote) {
+        if (!response.ended) {
+          response.end();
+        }
+        _debug_proxyResponse('Something bad happened!!');
+        return ;
       }
+      
       for (let key in res.headers) {
         response.setHeader(key, res.headers[key]);
       }
@@ -253,11 +277,14 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) 
         }
       }
       response.writeHead(res.statusCode);
+      response.wrote = true;
     }
     
     res.on('data', (chunk) => {
-      response.write(chunk);
-      _debug_proxyResponseV('Proxied %d bytes.', chunk.length);
+      if(!response.ended) {
+        response.write(chunk);
+        _debug_proxyResponseV('Proxied %d bytes.', chunk.length);
+      }
     });
     res.on('error', (error) => {
       _debug_proxyResponse('Some error occured.');
@@ -266,7 +293,11 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) 
 
     res.on('end', onEnd || () => {
       _debug_proxyResponseV('end response.');
-      response.end();
+
+      res.ended = true;
+
+      if (!response.ended)
+        response.end();
     });
   };
 }
