@@ -260,24 +260,22 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) 
       if (bFixHeader)
         res.headers['Content-Type'] = 'audio/mpeg';
 
-      if (response.wrote) {
-        if (!response.ended) {
-          response.end();
+      if (!response.wrote) {
+        try {
+          for (let key in res.headers) {
+            response.setHeader(key, res.headers[key]);
+          }
+          if (otherHeaders) {
+            for (let key in otherHeaders) {
+              response.setHeader(key, otherHeaders[key]);
+            }
+          }
+          response.writeHead(res.statusCode);
+          response.wrote = true;
+        } catch (err) {
+          _debug_proxyResponse('Skip header.');
         }
-        _debug_proxyResponse('Something bad happened!!');
-        return ;
       }
-      
-      for (let key in res.headers) {
-        response.setHeader(key, res.headers[key]);
-      }
-      if (otherHeaders) {
-        for (let key in otherHeaders) {
-          response.setHeader(key, otherHeaders[key]);
-        }
-      }
-      response.writeHead(res.statusCode);
-      response.wrote = true;
     }
     
     res.on('data', (chunk) => {
