@@ -5,7 +5,8 @@
   "main": "loader.js",
   "scripts": {
     "start": "set debug=n* && node loader.js",
-    "start-unix": "debug=n* node loader.js"
+    "start-unix": "debug=n* node loader.js",
+    "setup": "npm install && node reload-cache.js"
   },
   "author": "JixunMoe",
   "license": "MIT",
