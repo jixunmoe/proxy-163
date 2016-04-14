@@ -1,5 +1,7 @@
 # Proxy-163
 
+Deprecated. The service is buggy anyway (unable to respawn it self).
+
 # Install
 1. Install node.js `~5.5.0`
 2. clone this repo

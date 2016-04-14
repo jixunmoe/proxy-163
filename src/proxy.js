@@ -239,13 +239,16 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) 
     response.on('end', () => {
       response.ended = true;
 
-      if (!res.ended) {
+      if (!res.ended && res.end) {
         res.end();
       }
     });
 
     response.on('error', (err) => {
       if (err) {
+        response.ended = true;
+        if (res.end)
+          res.end();
         _debug_proxyResponse('Error in response, captured: ', err.message);
         _debug_proxyResponseV(err);
       } else {
@@ -294,7 +297,7 @@ function proxyResponse(response, bFixHeader, otherHeaders, bWriteHeader, onEnd) 
 
       res.ended = true;
 
-      if (!response.ended)
+      if (!response.ended && response.end)
         response.end();
     });
   };
